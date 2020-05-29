@@ -6,18 +6,18 @@ from sklearn.cluster import KMeans
 import hmmlearn.hmm
 from scipy.special import softmax
 from dataset import get_mfcc, get_class_data, clustering, get_dataset
-from config import CLASS_NAMES,TRANSMAT_PRIOR, START_PROB
-from config import get_gt
+from config import *
 from sklearn.metrics import accuracy_score
+import math
 
-def hmm_model():
+def hmm_model(n_com, start_prob, trans_prior):
     """
     Get model hmm learn
     """
     model = hmmlearn.hmm.MultinomialHMM(
-            n_components=6, random_state=0, n_iter=1000, verbose=True,
-            startprob_prior = START_PROB,
-            transmat_prior = TRANSMAT_PRIOR
+            n_components=n_com*3, random_state=0, n_iter=1000, verbose=True,
+            startprob_prior = start_prob,
+            transmat_prior = trans_prior
     )
     return model
 
@@ -39,8 +39,16 @@ def train(dataset):
         # O^r size T x 1
         dataset[cname] = list([kmeans.predict(v).reshape(-1,1) for v in dataset[cname]])
 
+        if cname == "benh_nhan":
+            hmm = hmm_model(N_COMPONENT_BN, START_PROB_BN, TRANSMAT_PRIOR_BN)
+        elif cname == "cua":
+            hmm = hmm_model(N_COMPONENT_CUA, START_PROB_CUA, TRANSMAT_PRIOR_CUA)
+        elif cname == "khong":
+            hmm = hmm_model(N_COMPONENT_KHONG, START_PROB_KHONG, TRANSMAT_PRIOR_KHONG)
+        elif cname == "nguoi":
+            hmm = hmm_model(N_COMPONENT_NGUOI, START_PROB_NGUOI, TRANSMAT_PRIOR_NGUOI)
         #define model
-        hmm = hmm_model()
+        # hmm = hmm_model()
         if 'test' not in cname:
             X = np.concatenate(dataset[cname])
             lengths = list([len(x) for x in dataset[cname]])
@@ -56,6 +64,7 @@ def valid(models, dataset):
     print("Testing")
     # preds = []
     # ground_truths = []
+    ACC = []
     for true_cname in CLASS_NAMES:
         preds = []
         ground_truths = []
@@ -70,7 +79,12 @@ def valid(models, dataset):
                 ground_truths.append(gt)
                 print(true_cname, score_dict)
         acc = accuracy_score(ground_truths, preds)
+        if not math.isnan(acc):
+            ACC.append(acc)
         print(f"{true_cname} accuracy: ",acc)
+    ACC = np.asarray(ACC)
+    print(ACC)
+    print(f"Mean acc: {np.mean(ACC)}")
     return preds
 if __name__ == '__main__':
 
